@@ -10,6 +10,7 @@ parser.add_argument('-b', '--batch_size', type=int, default=125, help='batch siz
 parser.add_argument('-t', '--tagme_treshold', type=float, default=0.26, help='tagme treshold')
 parser.add_argument('-m', '--mode', type=str, default="tagme", help='mode: tagme or graft-net')
 parser.add_argument('-d', '--dataset', type=str, default="msmarco-passage/dev/small", help='dataset name')
+parser.add_argument('-s', '--start_index', type=int, default=0, help='start index')
 args = parser.parse_args()
 
 MY_GCUBE_TOKEN = "90c6802e-a3ba-41ef-8eb9-870571f53692-843339462"
@@ -27,15 +28,20 @@ async def get_tagme_entities(text_id, text: str, input_type):
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(TAGME_URL, data=payload) as response:
-            response = await response.json()
-            annotations = [annon for annon in response['annotations'] if annon['rho'] > TAGME_TRESHOLD]
+            try:
+                response = await response.json()
+                annotations = [annon for annon in response['annotations'] if annon['rho'] > TAGME_TRESHOLD]
+            except:
+                with open(f"tagme_{input_type}_errors.txt", "a") as f:
+                    f.write(f"{text_id}\n")
+                annotations = []
             with open(f'entities/{input_type}_entities.tsv', 'a', encoding='utf-8') as f:
                 f.write(f'{text_id}\t{annotations}\n')
             return annotations
 
 
 async def tagme_queries_runner():
-    for i in trange(0, len(dataset.queries_iter()), BATCH_SIZE):
+    for i in trange(0, len(dataset.queries_count()), BATCH_SIZE):
         tasks = []
         for query in dataset.queries_iter()[i:i + BATCH_SIZE]:
             tasks.append(get_tagme_entities(query.query_id, query.text, 'queries'))
@@ -43,7 +49,7 @@ async def tagme_queries_runner():
 
 
 async def tagme_docs_runner():
-    for i in trange(0, len(dataset.docs_iter()), BATCH_SIZE):
+    for i in trange(args.start_index, len(dataset.docs_count()), BATCH_SIZE):
         tasks = []
         for doc in dataset.docs_iter()[i:i + BATCH_SIZE]:
             tasks.append(get_tagme_entities(doc.doc_id, doc.text, 'docs'))
