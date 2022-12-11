@@ -8,7 +8,6 @@ import ir_datasets
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--batch_size', type=int, default=125, help='batch size')
 parser.add_argument('-t', '--tagme_treshold', type=float, default=0.26, help='tagme treshold')
-parser.add_argument('-m', '--mode', type=str, default="tagme", help='mode: tagme or graft-net')
 parser.add_argument('-d', '--dataset', type=str, default="msmarco-passage/dev/small", help='dataset name')
 parser.add_argument('-s', '--start_index', type=int, default=0, help='start index')
 args = parser.parse_args()
@@ -41,7 +40,7 @@ async def get_tagme_entities(text_id, text: str, input_type):
 
 
 async def tagme_queries_runner():
-    for i in trange(0, len(dataset.queries_count()), BATCH_SIZE):
+    for i in trange(0, dataset.queries_count(), BATCH_SIZE):
         tasks = []
         for query in dataset.queries_iter()[i:i + BATCH_SIZE]:
             tasks.append(get_tagme_entities(query.query_id, query.text, 'queries'))
@@ -49,14 +48,14 @@ async def tagme_queries_runner():
 
 
 async def tagme_docs_runner():
-    for i in trange(args.start_index, len(dataset.docs_count()), BATCH_SIZE):
+    for i in trange(args.start_index, dataset.docs_count(), BATCH_SIZE):
         tasks = []
         for doc in dataset.docs_iter()[i:i + BATCH_SIZE]:
             tasks.append(get_tagme_entities(doc.doc_id, doc.text, 'docs'))
         await asyncio.gather(*tasks)
 
 
-if args.mode == "tagme":
+if __name__ == '__main__':
     print(f'Getting entities from TAGME with "score > {TAGME_TRESHOLD}"')
 
     if sys.platform == 'win32':
@@ -66,6 +65,3 @@ if args.mode == "tagme":
 
     asyncio.new_event_loop().run_until_complete(tagme_queries_runner())
     asyncio.new_event_loop().run_until_complete(tagme_docs_runner())
-elif args.mode == "graft-net":
-    print('Getting entities from Graft-Net')
-    # TODO
