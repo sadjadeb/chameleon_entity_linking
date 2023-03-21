@@ -3,3 +3,9 @@
 /venv
 /__pycache__
 /entities
+/temp.py
+/resources/
+/msmarco/
+/Luke_TEXT/
+/SBERT/output/
+/Fully/output/
