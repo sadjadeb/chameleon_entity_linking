@@ -1,0 +1,9 @@
+{
+  "learning_rate": 2e-5,
+  "dataPath" : "/home/sajadeb/Luke_Luke/dataset",
+  "output" : "/home/sajadeb/Luke_Luke/output/",
+  "Model" : "studio-ousia/luke-base",
+  "batch" : 10,
+  "epochs" : 1,
+  "num_warmup_steps" :0
+}
