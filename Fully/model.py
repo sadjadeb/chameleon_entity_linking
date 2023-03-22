@@ -7,7 +7,6 @@ from transformers import AutoModel, AutoTokenizer, LukeModel, LukeTokenizer
 class BiEncoder(nn.Module):
     def __init__(self, model_name: str = None, output_size: int = 128, max_length: int = 512, device: str = None, ):
         super().__init__()
-        self.device = device
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.text_language_model = AutoModel.from_pretrained(model_name)
@@ -18,9 +17,9 @@ class BiEncoder(nn.Module):
 
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        self._target_device = torch.device(device)
+        self.target_device = torch.device(device)
 
-    def forward(self, queries, passages, phase):
+    def forward(self, queries, passages):
         queries_outputs = self.text_language_model(**queries)
         queries_representation = queries_outputs.pooler_output
         passages_outputs = self.text_language_model(**passages)
@@ -67,10 +66,10 @@ class BiEncoder(nn.Module):
                                                 max_length=self.max_length)
 
         for name in queries_tokenized:
-            queries_tokenized[name] = queries_tokenized[name].to(self._target_device)
+            queries_tokenized[name] = queries_tokenized[name].to(self.target_device)
         for name in passages_tokenized:
-            passages_tokenized[name] = passages_tokenized[name].to(self._target_device)
-        labels = torch.tensor(labels, dtype=torch.float).to(self._target_device)
+            passages_tokenized[name] = passages_tokenized[name].to(self.target_device)
+        labels = torch.tensor(labels, dtype=torch.float).to(self.target_device)
 
         return queries_tokenized, passages_tokenized, labels
 
@@ -90,22 +89,24 @@ class BiEncoder(nn.Module):
                 entities[idx].append(each_entities)
 
         try:
-            tokenized = self.tokenizer(*texts, *entity_spans, *entities, padding=True, truncation='longest_first',
-                                       return_tensors="pt", max_length=self.max_length)
+            queries_tokenized = self.tokenizer(texts[0], entity_spans=entity_spans[0], entities=entities[0],
+                                               padding=True, truncation='longest_first', return_tensors="pt",
+                                               max_length=self.max_length)
+            passages_tokenized = self.tokenizer(texts[1], entity_spans=entity_spans[1], entities=entities[1],
+                                                padding=True, truncation='longest_first', return_tensors="pt",
+                                                max_length=self.max_length)
         except:
-            entity_spans = [[], []]
-            entities = [[], []]
-            tokenized = self.tokenizer(*texts, *entity_spans, *entities, padding=True, truncation='longest_first',
-                                       return_tensors="pt", max_length=self.max_length)
-            # tokenized = self.tokenizer(*texts, padding=True, truncation='longest_first', return_tensors="pt", max_length=self.max_length)
+            queries_tokenized = self.tokenizer(texts[0], padding=True, truncation='longest_first', return_tensors="pt",
+                                               max_length=self.max_length)
+            passages_tokenized = self.tokenizer(texts[1], padding=True, truncation='longest_first', return_tensors="pt",
+                                                max_length=self.max_length)
 
-        for name in tokenized:
-            tokenized[name] = tokenized[name].to(self._target_device)
+        for name in queries_tokenized:
+            queries_tokenized[name] = queries_tokenized[name].to(self.target_device)
+        for name in passages_tokenized:
+            passages_tokenized[name] = passages_tokenized[name].to(self.target_device)
 
-        return tokenized
-
-    def fit(self):
-        return None
+        return queries_tokenized, passages_tokenized
 
 
 class InputExample:
