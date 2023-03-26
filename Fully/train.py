@@ -20,7 +20,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s',
 LOCAL = True if sys.platform == 'win32' else False
 # First, we define the transformer model we want to fine-tune
 model_name = "studio-ousia/luke-base"
-train_batch_size = 4
+train_batch_size = 4 if LOCAL else 32
 warmup_steps = 5000
 device = 'cpu' if LOCAL else 'cuda:1'
 # Maximal number of training samples we want to use
@@ -129,10 +129,11 @@ criterion = torch.nn.HingeEmbeddingLoss()
 scaler = torch.cuda.amp.GradScaler()
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=len(train_dataloader))
 
+step = 0
 model.to(model.target_device)
 model.zero_grad()
 model.train()
-for step, batch in tqdm(enumerate(train_dataloader)):
+for batch in tqdm(train_dataloader):
     queries, passages, labels = batch
 
     with autocast():
@@ -153,7 +154,8 @@ for step, batch in tqdm(enumerate(train_dataloader)):
     if not skip_scheduler:
         scheduler.step()
 
-    if step % 10000 == 0 and step != 0:
+    step += 1
+    if step % 10000 == 0:
         torch.save(model, model_save_path + f"/BiEncoder_{step}.pt")
 
 torch.save(model, model_save_path + '/BiEncoder.pt')
