@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import DataLoader
-
 from model import BiEncoder
 import os
 from tqdm import tqdm
@@ -14,7 +13,8 @@ run_output_path = model_save_path + '/Run.txt'
 device = 'cpu' if LOCAL else 'cuda:1'
 device = torch.device(device)
 
-model = torch.load(model_save_path + '/BiEncoder.pt')
+model = BiEncoder(model_name)
+model.load_state_dict(torch.load(model_save_path + '/BiEncoder.pt'))
 model.eval()
 model.to(device)
 print(f'{model_save_path} model loaded.')

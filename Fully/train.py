@@ -158,4 +158,4 @@ for batch in tqdm(train_dataloader):
     if step % 10000 == 0:
         torch.save(model, model_save_path + f"/BiEncoder_{step}.pt")
 
-torch.save(model, model_save_path + '/BiEncoder.pt')
+torch.save(model.state_dict(), model_save_path + '/BiEncoder.pt')
