@@ -6,31 +6,34 @@ from transformers import AutoModel, AutoTokenizer, LukeModel, LukeTokenizer
 
 class BiEncoder(nn.Module):
     def __init__(self, model_name: str = None, output_size: int = 128, max_length: int = 512, device: str = None, ):
+        if model_name is None:
+            raise ValueError("model_name must be provided")
+
         super().__init__()
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.query_language_model = AutoModel.from_pretrained(model_name)
-        self.passage_language_model = AutoModel.from_pretrained(model_name)
+        self.text_language_model = AutoModel.from_pretrained(model_name)
         # self.entity_language_model = LukeModel.from_pretrained('studio-ousia/luke-base')
-        self.query_hidden_layer = nn.Linear(768, output_size)
-        self.passage_hidden_layer = nn.Linear(768, output_size)
+        self.query_hidden_layer = nn.Linear(self.text_language_model.config.hidden_size, output_size)
+        self.passage_hidden_layer = nn.Linear(self.text_language_model.config.hidden_size, output_size)
         self.join_layer = nn.Linear(output_size * 2, 1)
+        print(self.text_language_model.config.hidden_size)
 
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.target_device = torch.device(device)
 
     def forward(self, queries, passages):
-        queries_outputs = self.query_language_model(**queries)
+        queries_outputs = self.text_language_model(**queries)
         queries_representation = queries_outputs.pooler_output
-        passages_outputs = self.passage_language_model(**passages)
+        passages_outputs = self.text_language_model(**passages)
         passages_representation = passages_outputs.pooler_output
 
         queries_x = self.query_hidden_layer(queries_representation)
         queries_x = torch.relu(queries_x)
         passages_x = self.passage_hidden_layer(passages_representation)
         passages_x = torch.relu(passages_x)
-        output = self.join_layer(torch.cat((queries_x, passages_x), dim=1))
+        output = self.join_layer(torch.cat([queries_x, passages_x], dim=1))
         output = torch.sigmoid(output)
 
         return output
@@ -58,7 +61,8 @@ class BiEncoder(nn.Module):
                                                padding='max_length', truncation=True, return_tensors="pt",
                                                max_length=self.max_length)
             passages_tokenized = self.tokenizer(texts[1], entity_spans=entity_spans[1], entities=entities[1],
-                                                padding='max_length', return_tensors="pt", max_length=self.max_length)
+                                                padding='max_length', truncation=True, return_tensors="pt",
+                                                max_length=self.max_length)
         except:
             queries_tokenized = self.tokenizer(texts[0], padding='max_length', truncation=True, return_tensors="pt",
                                                max_length=self.max_length)
@@ -90,13 +94,15 @@ class BiEncoder(nn.Module):
 
         try:
             queries_tokenized = self.tokenizer(texts[0], entity_spans=entity_spans[0], entities=entities[0],
-                                               padding='max_length', return_tensors="pt", max_length=self.max_length)
-            passages_tokenized = self.tokenizer(texts[1], entity_spans=entity_spans[1], entities=entities[1],
-                                                padding='max_length', return_tensors="pt", max_length=self.max_length)
-        except:
-            queries_tokenized = self.tokenizer(texts[0], padding='max_length', return_tensors="pt",
+                                               padding='max_length', truncation=True, return_tensors="pt",
                                                max_length=self.max_length)
-            passages_tokenized = self.tokenizer(texts[1], padding='max_length', return_tensors="pt",
+            passages_tokenized = self.tokenizer(texts[1], entity_spans=entity_spans[1], entities=entities[1],
+                                                padding='max_length', truncation=True, return_tensors="pt",
+                                                max_length=self.max_length)
+        except:
+            queries_tokenized = self.tokenizer(texts[0], padding='max_length', truncation=True, return_tensors="pt",
+                                               max_length=self.max_length)
+            passages_tokenized = self.tokenizer(texts[1], padding='max_length', truncation=True, return_tensors="pt",
                                                 max_length=self.max_length)
 
         for name in queries_tokenized:
