@@ -4,7 +4,7 @@ from torch import nn
 from transformers import AutoModel, AutoTokenizer, LukeModel, LukeTokenizer
 
 
-class BiEncoder(nn.Module):
+class FullyCrossEncoder(nn.Module):
     def __init__(self, model_name: str = None, output_size: int = 128, max_length: int = 512, device: str = None, ):
         if model_name is None:
             raise ValueError("model_name must be provided")
@@ -17,7 +17,6 @@ class BiEncoder(nn.Module):
         self.query_hidden_layer = nn.Linear(self.text_language_model.config.hidden_size, output_size)
         self.passage_hidden_layer = nn.Linear(self.text_language_model.config.hidden_size, output_size)
         self.join_layer = nn.Linear(output_size * 2, 1)
-        print(self.text_language_model.config.hidden_size)
 
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"

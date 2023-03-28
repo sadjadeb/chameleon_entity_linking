@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 from sentence_transformers import LoggingHandler
 from transformers import get_linear_schedule_with_warmup
-from model import BiEncoder, InputExample
+from model import FullyCrossEncoder, InputExample
 import torch
 from torch.cuda.amp import autocast
 import logging
@@ -28,11 +28,11 @@ max_train_samples = 2e6
 # We use a positive-to-negative ratio: For 1 positive sample (label 1) we include 4 negative samples (label 0)
 pos_neg_ration = 4
 
-model_save_path = f'output/bi-encoder_{model_name.split("/")[-1]}_with-entities-entities'
+model_save_path = f'output/fully-cross-encoder_{model_name.split("/")[-1]}_with-entities-entities'
 os.makedirs(model_save_path, exist_ok=True)
 
 # We set num_labels=1, which predicts a continuous score between 0 and 1
-model = BiEncoder(model_name, max_length=512, device=device)
+model = FullyCrossEncoder(model_name, max_length=512, device=device)
 
 ### Now we read the MS Marco dataset
 if LOCAL:
@@ -156,6 +156,6 @@ for batch in tqdm(train_dataloader):
 
     step += 1
     if step % 10000 == 0:
-        torch.save(model, model_save_path + f"/BiEncoder_{step}.pt")
+        torch.save(model.state_dict(), model_save_path + f"/FullyCrossEncoder_{step}.pt")
 
-torch.save(model.state_dict(), model_save_path + '/BiEncoder.pt')
+torch.save(model.state_dict(), model_save_path + '/FullyCrossEncoder.pt')

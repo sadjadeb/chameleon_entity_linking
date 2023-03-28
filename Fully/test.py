@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from model import BiEncoder
+from model import FullyCrossEncoder
 import os
 from tqdm import tqdm
 import sys
@@ -8,13 +8,13 @@ import sys
 LOCAL = True if sys.platform == 'win32' else False
 # First, we define the transformer model we want to fine-tune
 model_name = "studio-ousia/luke-base"
-model_save_path = f'output/bi-encoder_{model_name.split("/")[-1]}_with-entities-entities'
+model_save_path = f'output/fully-cross-encoder_{model_name.split("/")[-1]}_with-entities-entities'
 run_output_path = model_save_path + '/Run.txt'
 device = 'cpu' if LOCAL else 'cuda:1'
 device = torch.device(device)
 
-model = BiEncoder(model_name)
-model.load_state_dict(torch.load(model_save_path + '/BiEncoder.pt'))
+model = FullyCrossEncoder(model_name)
+model.load_state_dict(torch.load(model_save_path + '/FullyCrossEncoder.pt'))
 model.eval()
 model.to(device)
 print(f'{model_save_path} model loaded.')
@@ -122,5 +122,5 @@ with open(run_output_path, 'w', encoding='utf-8') as out:
         rank = 1
         for hit in results:
             out.write(
-                str(qid) + ' Q0 ' + hit['pid'] + ' ' + str(rank) + ' ' + str(hit['score']) + ' ' + 'BiEncoder-like(Fully)' + '\n')
+                str(qid) + ' Q0 ' + hit['pid'] + ' ' + str(rank) + ' ' + str(hit['score']) + ' ' + 'FullyCrossEncoder' + '\n')
             rank = rank + 1
