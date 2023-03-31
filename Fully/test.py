@@ -10,11 +10,12 @@ LOCAL = True if sys.platform == 'win32' else False
 model_name = "studio-ousia/luke-base"
 model_save_path = f'output/fully-cross-encoder_{model_name.split("/")[-1]}_with-entities-entities'
 run_output_path = model_save_path + '/Run.txt'
-device = 'cpu' if LOCAL else 'cuda:1'
+device = 'cpu' if LOCAL else 'cuda:2'
 device = torch.device(device)
 
 model = FullyCrossEncoder(model_name)
 model.load_state_dict(torch.load(model_save_path + '/FullyCrossEncoder.pt'))
+model.target_device = device
 model.eval()
 model.to(device)
 print(f'{model_save_path} model loaded.')
