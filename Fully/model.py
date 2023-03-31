@@ -57,15 +57,15 @@ class FullyCrossEncoder(nn.Module):
 
         try:
             queries_tokenized = self.tokenizer(texts[0], entity_spans=entity_spans[0], entities=entities[0],
-                                               padding='max_length', truncation=True, return_tensors="pt",
+                                               padding=True, truncation='longest_first', return_tensors="pt",
                                                max_length=self.max_length)
             passages_tokenized = self.tokenizer(texts[1], entity_spans=entity_spans[1], entities=entities[1],
-                                                padding='max_length', truncation=True, return_tensors="pt",
+                                                padding=True, truncation='longest_first', return_tensors="pt",
                                                 max_length=self.max_length)
         except:
-            queries_tokenized = self.tokenizer(texts[0], padding='max_length', truncation=True, return_tensors="pt",
+            queries_tokenized = self.tokenizer(texts[0], padding=True, truncation='longest_first', return_tensors="pt",
                                                max_length=self.max_length)
-            passages_tokenized = self.tokenizer(texts[1], padding='max_length', truncation=True, return_tensors="pt",
+            passages_tokenized = self.tokenizer(texts[1], padding=True, truncation='longest_first', return_tensors="pt",
                                                 max_length=self.max_length)
 
         for name in queries_tokenized:
@@ -93,15 +93,15 @@ class FullyCrossEncoder(nn.Module):
 
         try:
             queries_tokenized = self.tokenizer(texts[0], entity_spans=entity_spans[0], entities=entities[0],
-                                               padding='max_length', truncation=True, return_tensors="pt",
+                                               padding=True, truncation='longest_first', return_tensors="pt",
                                                max_length=self.max_length)
             passages_tokenized = self.tokenizer(texts[1], entity_spans=entity_spans[1], entities=entities[1],
-                                                padding='max_length', truncation=True, return_tensors="pt",
+                                                padding=True, truncation='longest_first', return_tensors="pt",
                                                 max_length=self.max_length)
         except:
-            queries_tokenized = self.tokenizer(texts[0], padding='max_length', truncation=True, return_tensors="pt",
+            queries_tokenized = self.tokenizer(texts[0], padding=True, truncation='longest_first', return_tensors="pt",
                                                max_length=self.max_length)
-            passages_tokenized = self.tokenizer(texts[1], padding='max_length', truncation=True, return_tensors="pt",
+            passages_tokenized = self.tokenizer(texts[1], padding=True, truncation='longest_first', return_tensors="pt",
                                                 max_length=self.max_length)
 
         for name in queries_tokenized:
