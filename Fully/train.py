@@ -21,8 +21,7 @@ LOCAL = True if sys.platform == 'win32' else False
 # First, we define the transformer model we want to fine-tune
 model_name = "studio-ousia/luke-base"
 train_batch_size = 4 if LOCAL else 32
-warmup_steps = 5000
-device = 'cpu' if LOCAL else 'cuda:1'
+device = 'cpu' if LOCAL else 'cuda:0'
 # Maximal number of training samples we want to use
 max_train_samples = 2e6
 # We use a positive-to-negative ratio: For 1 positive sample (label 1) we include 4 negative samples (label 0)
@@ -33,7 +32,7 @@ os.makedirs(model_save_path, exist_ok=True)
 
 # We set num_labels=1, which predicts a continuous score between 0 and 1
 model = FullyCrossEncoder(model_name, max_length=512, device=device)
-
+model.to(model.target_device)
 ### Now we read the MS Marco dataset
 if LOCAL:
     data_folder = r'C:\Users\sajad\PycharmProjects\chameleon_entity_linking\msmarco'
@@ -121,38 +120,51 @@ del queries_entities
 gc.collect()
 
 # We create a DataLoader to load our train samples
-train_dataloader = DataLoader(train_samples, shuffle=True, batch_size=train_batch_size, collate_fn=model.batching_collate)
-del train_samples
+train_dataloader = DataLoader(train_samples, shuffle=True, batch_size=train_batch_size,
+                              collate_fn=model.batching_collate)
 
+total_steps = len(train_dataloader)
+warmup_steps = total_steps // 10
+print(f'Total steps: {total_steps}, warmup steps: {warmup_steps}')
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-5)
-criterion = torch.nn.HingeEmbeddingLoss()
+criterion = torch.nn.BCEWithLogitsLoss()
 scaler = torch.cuda.amp.GradScaler()
-scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=len(train_dataloader))
+scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
+                                            num_training_steps=total_steps - warmup_steps)
 
 step = 0
-model.to(model.target_device)
+SCALER = False
 model.zero_grad()
 model.train()
 for batch in tqdm(train_dataloader):
     queries, passages, labels = batch
 
-    with autocast():
+    if SCALER:
+        with autocast():
+            outputs = model(queries, passages)
+            loss = criterion(outputs.squeeze(), labels)
+
+        scale_before_step = scaler.get_scale()
+        scaler.scale(loss).backward()
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        scaler.step(optimizer)
+        scaler.update()
+
+        skip_scheduler = scaler.get_scale() != scale_before_step
+
+        optimizer.zero_grad()
+
+        if not skip_scheduler:
+            scheduler.step()
+    else:
         outputs = model(queries, passages)
         loss = criterion(outputs.squeeze(), labels)
 
-    scale_before_step = scaler.get_scale()
-    scaler.scale(loss).backward()
-    scaler.unscale_(optimizer)
-    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-    scaler.step(optimizer)
-    scaler.update()
-
-    skip_scheduler = scaler.get_scale() != scale_before_step
-
-    optimizer.zero_grad()
-
-    if not skip_scheduler:
+        loss.backward()
+        optimizer.step()
         scheduler.step()
+        optimizer.zero_grad()
 
     step += 1
     if step % 10000 == 0:
