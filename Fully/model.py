@@ -2,6 +2,9 @@ from typing import List, Union
 import torch
 from torch import nn
 from transformers import AutoModel, AutoTokenizer, LukeModel, LukeTokenizer
+from transformers import logging
+
+logging.set_verbosity_error()
 
 
 class FullyCrossEncoder(nn.Module):
