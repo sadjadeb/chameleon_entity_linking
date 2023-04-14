@@ -1,21 +1,13 @@
 from torch.utils.data import DataLoader
-from sentence_transformers import LoggingHandler
 from transformers import get_linear_schedule_with_warmup
 from model import FullyCrossEncoder, InputExample
 import torch
 from torch.cuda.amp import autocast
-import logging
 import os
 import random
 import gc
 import sys
 from tqdm import tqdm
-
-#### Just some code to print debug information to stdout
-logging.basicConfig(format='%(asctime)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO,
-                    handlers=[LoggingHandler()])
 
 LOCAL = True if sys.platform == 'win32' else False
 # First, we define the transformer model we want to fine-tune
@@ -33,6 +25,7 @@ os.makedirs(model_save_path, exist_ok=True)
 # We set num_labels=1, which predicts a continuous score between 0 and 1
 model = FullyCrossEncoder(model_name, max_length=512, device=device)
 model.to(model.target_device)
+
 ### Now we read the MS Marco dataset
 if LOCAL:
     data_folder = r'C:\Users\sajad\PycharmProjects\chameleon_entity_linking\msmarco'
@@ -171,3 +164,4 @@ for batch in tqdm(train_dataloader):
         torch.save(model.state_dict(), model_save_path + f"/FullyCrossEncoder_{step}.pt")
 
 torch.save(model.state_dict(), model_save_path + '/FullyCrossEncoder.pt')
+print(f'Finished training. Model saved to {model_save_path}')
