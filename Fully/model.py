@@ -114,6 +114,38 @@ class FullyCrossEncoder(nn.Module):
 
         return queries_tokenized, passages_tokenized
 
+    def batching_collate_merge(self, batch):
+        texts = [[] for _ in range(len(batch[0].texts))]
+        labels = []
+
+        for example in batch:
+            for idx, text in enumerate(example.texts):
+                texts[idx].append(text.strip())
+            labels.append(example.label)
+
+        tokenized = self.tokenizer(*texts, padding=True, truncation='longest_first', return_tensors="pt",
+                                   max_length=self.max_length)
+
+        for name in tokenized:
+            tokenized[name] = tokenized[name].to(self.target_device)
+        labels = torch.tensor(labels, dtype=torch.float).to(self.target_device)
+
+        return tokenized, labels
+
+    def batching_collate_merge_without_label(self, batch):
+        texts = [[], []]
+
+        for example in batch:
+            for idx, text in enumerate(example[0]):
+                texts[idx].append(text.strip())
+        tokenized = self.tokenizer(*texts, padding=True, truncation='longest_first', return_tensors="pt",
+                                   max_length=self.max_length)
+
+        for name in tokenized:
+            tokenized[name] = tokenized[name].to(self.target_device)
+
+        return tokenized
+
 
 class InputExample:
     """
