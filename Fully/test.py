@@ -120,8 +120,5 @@ for qid, passages in tqdm(qrels.items()):
 print('Writing the result to file...')
 with open(run_output_path, 'w', encoding='utf-8') as out:
     for qid, results in ranks.items():
-        rank = 1
-        for hit in results:
-            out.write(
-                str(qid) + ' Q0 ' + hit['pid'] + ' ' + str(rank) + ' ' + str(hit['score']) + ' ' + 'FullyCrossEncoder' + '\n')
-            rank = rank + 1
+        for rank, hit in enumerate(results):
+            out.write(f'{qid} Q0 {hit["pid"]} {rank+1} {hit["score"]} FullyCrossEncoder\n')
