@@ -120,7 +120,7 @@ total_steps = len(train_dataloader)
 warmup_steps = total_steps // 10
 print(f'Total steps: {total_steps}, warmup steps: {warmup_steps}')
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-5)
-criterion = torch.nn.BCEWithLogitsLoss()
+criterion = torch.nn.CrossEntropyLoss()
 scaler = torch.cuda.amp.GradScaler()
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
                                             num_training_steps=total_steps - warmup_steps)
