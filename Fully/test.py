@@ -84,7 +84,7 @@ ranks = {}
 for qid, passages in tqdm(qrels.items()):
     query = queries[qid]
     query_entity_spans = [(entity['start'], entity['end']) for entity in queries_entities[qid]]
-    query_entities = [entity.get('title', 'spot') for entity in queries_entities[qid]]
+    query_entities = [entity.get('title', entity.get('spot', None)) for entity in queries_entities[qid]]
 
     collection_entity_spans = {}
     collection_entities = {}
@@ -94,9 +94,9 @@ for qid, passages in tqdm(qrels.items()):
         else:
             collection_entity_spans[pid] = [(entity['start'], entity['end']) for entity in passages_entities[pid]]
         if pid in collection_entities:
-            collection_entities[pid].append([entity.get('title', 'spot') for entity in passages_entities[pid]])
+            collection_entities[pid].append([entity.get('title', entity.get('spot', None)) for entity in passages_entities[pid]])
         else:
-            collection_entities[pid] = [entity.get('title', 'spot') for entity in passages_entities[pid]]
+            collection_entities[pid] = [entity.get('title', entity.get('spot', None)) for entity in passages_entities[pid]]
 
     # Concatenate the query and all passages and predict the scores for the pairs [query, passage]
     model_inputs = [[[query, collection[pid]], [query_entity_spans, collection_entity_spans[pid]], [query_entities, collection_entities[pid]]] for pid in passages]

@@ -85,18 +85,18 @@ with open(train_filepath, 'r', encoding='utf8') as fIn:
 
         query = queries[qid]
         query_entity_spans = [(entity['start'], entity['end']) for entity in queries_entities[qid]]
-        query_entities = [entity.get('title', 'spot') for entity in queries_entities[qid]]
+        query_entities = [entity.get('title', entity.get('spot', None)) for entity in queries_entities[qid]]
 
         if (cnt % (pos_neg_ration + 1)) == 0:
             passage = corpus[pos_id]
             label = 1
             passage_entity_spans = [(entity['start'], entity['end']) for entity in passages_entities[pos_id]]
-            passage_entities = [entity.get('title', 'spot') for entity in passages_entities[pos_id]]
+            passage_entities = [entity.get('title', entity.get('spot', None)) for entity in passages_entities[pos_id]]
         else:
             passage = corpus[neg_id]
             label = 0
             passage_entity_spans = [(entity['start'], entity['end']) for entity in passages_entities[neg_id]]
-            passage_entities = [entity.get('title', 'spot') for entity in passages_entities[neg_id]]
+            passage_entities = [entity.get('title', entity.get('spot', None)) for entity in passages_entities[neg_id]]
 
         train_samples.append(InputExample(texts=[query, passage], label=label,
                                           entity_spans=[query_entity_spans, passage_entity_spans],
@@ -126,7 +126,7 @@ scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_s
                                             num_training_steps=total_steps - warmup_steps)
 
 step = 0
-SCALER = False
+SCALER = True
 model.zero_grad()
 model.train()
 for batch in tqdm(train_dataloader):
