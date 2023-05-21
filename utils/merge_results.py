@@ -1,8 +1,8 @@
 from tqdm import tqdm
 
 results = {}
-pruned_run_file = '/home/sajadeb/chameleon_entity_linking/SBERT/output/cross-encoder_luke-base_with-entities-entities-latest/Run.txt'
-entire_run_file = '/home/sajadeb/chameleon_entity_linking/SBERT/output/cross-encoder_luke-base_with-entities-entities-latest/Run_full.txt'
+pruned_run_file = '/home/sajadeb/chameleon_entity_linking/CrossEncoder/output/cross-encoder_luke-base_with-entities-entities-latest/Run.txt'
+entire_run_file = '/home/sajadeb/chameleon_entity_linking/CrossEncoder/output/cross-encoder_luke-base_with-entities-entities-latest/Run_full.txt'
 with open(pruned_run_file, 'r') as pruned, open(entire_run_file, 'r') as entire:
     for line in tqdm(pruned):
         data = line.strip().split()
