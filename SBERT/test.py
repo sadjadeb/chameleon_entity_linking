@@ -7,7 +7,7 @@ LOCAL = True if sys.platform == 'win32' else False
 # First, we define the transformer model we want to fine-tune
 # model_name = 'distilroberta-base'
 model_name = "studio-ousia/luke-base"
-model_save_path = 'output/cross-encoder_' + model_name.split("/")[-1] + '_with-entities-entities' + '-latest'
+model_save_path = f'output/cross-encoder_{model_name.split("/")[-1]}_with-entities-entities'
 run_output_path = model_save_path + '/Run.txt'
 device = 'cpu' if LOCAL else 'cuda:1'
 

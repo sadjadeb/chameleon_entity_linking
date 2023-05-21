@@ -129,4 +129,4 @@ model.fit(train_dataloader=train_dataloader,
           use_amp=True)
 
 # Save latest model
-model.save(model_save_path + '-latest')
+model.save(model_save_path)
