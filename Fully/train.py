@@ -7,13 +7,14 @@ import os
 import random
 import gc
 import sys
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 LOCAL = True if sys.platform == 'win32' else False
 # First, we define the transformer model we want to fine-tune
 model_name = "studio-ousia/luke-base"
 train_batch_size = 4 if LOCAL else 32
 device = 'cpu' if LOCAL else 'cuda:0'
+epochs = 3
 # Maximal number of training samples we want to use
 max_train_samples = 2e6
 # We use a positive-to-negative ratio: For 1 positive sample (label 1) we include 4 negative samples (label 0)
@@ -125,43 +126,44 @@ scaler = torch.cuda.amp.GradScaler()
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps,
                                             num_training_steps=total_steps - warmup_steps)
 
-step = 0
 SCALER = True
 model.zero_grad()
 model.train()
-for batch in tqdm(train_dataloader):
-    queries, passages, labels = batch
+for epoch in trange(epochs):
+    step = 0
+    for batch in tqdm(train_dataloader):
+        queries, passages, queries_entities, passages_entities, labels = batch
 
-    if SCALER:
-        with autocast():
-            outputs = model(queries, passages)
+        if SCALER:
+            with autocast():
+                outputs = model(queries, passages, queries_entities, passages_entities)
+                loss = criterion(outputs.squeeze(), labels)
+
+            scale_before_step = scaler.get_scale()
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            scaler.step(optimizer)
+            scaler.update()
+
+            skip_scheduler = scaler.get_scale() != scale_before_step
+
+            optimizer.zero_grad()
+
+            if not skip_scheduler:
+                scheduler.step()
+        else:
+            outputs = model(queries, passages, queries_entities, passages_entities)
             loss = criterion(outputs.squeeze(), labels)
 
-        scale_before_step = scaler.get_scale()
-        scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        scaler.step(optimizer)
-        scaler.update()
-
-        skip_scheduler = scaler.get_scale() != scale_before_step
-
-        optimizer.zero_grad()
-
-        if not skip_scheduler:
+            loss.backward()
+            optimizer.step()
             scheduler.step()
-    else:
-        outputs = model(queries, passages)
-        loss = criterion(outputs.squeeze(), labels)
+            optimizer.zero_grad()
 
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
-        optimizer.zero_grad()
-
-    step += 1
-    if step % 10000 == 0:
-        torch.save(model.state_dict(), model_save_path + f"/FullyCrossEncoder_{step}.pt")
+        step += 1
+        if step % 10000 == 0:
+            torch.save(model.state_dict(), model_save_path + f"/FullyCrossEncoder_{epoch}_{step}.pt")
 
 torch.save(model.state_dict(), model_save_path + '/FullyCrossEncoder.pt')
 print(f'Finished training. Model saved to {model_save_path}')
