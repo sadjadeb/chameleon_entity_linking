@@ -1,17 +1,16 @@
 import sys
 import json
 from torch.utils.data import DataLoader
-from sentence_transformers import SentenceTransformer, models, losses, InputExample
+from sentence_transformers import models, losses
+from model import SentenceTransformer, MSMARCODataset
 import gzip
 import os
 import tqdm
-from torch.utils.data import Dataset
-import random
 import pickle
 from transformers import logging
+import gc
 
 logging.set_verbosity_error()
-
 
 # The  model we want to fine-tune
 LOCAL = True if sys.platform == 'win32' else False
@@ -21,8 +20,8 @@ train_batch_size = 4 if LOCAL else 32
 device = 'cpu' if LOCAL else 'cuda:0'
 max_passages = 2e6
 max_seq_length = 512
-num_negs_per_system = 5
-num_epochs = 2
+num_negs_per_system = 4
+num_epochs = 3
 warmup_steps = 1000
 use_pre_trained_model = False
 
@@ -37,8 +36,7 @@ else:
     print("Create new SBERT model")
     word_embedding_model = models.Transformer(model_name, max_seq_length=max_seq_length)
     pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), "mean")
-    model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device)
-
+    model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device, mode='entity')
 
 ### Now we read the MS Marco dataset
 if LOCAL:
@@ -64,6 +62,24 @@ with open(queries_filepath, 'r', encoding='utf8') as fIn:
         qid, query = line.strip().split("\t")
         queries[int(qid)] = query
 
+### Read the train passages entities, store in passages_entities dict
+passages_entities = {}
+passages_entities_filepath = os.path.join(data_folder, 'entities', 'docs_entities.tsv')
+with open(passages_entities_filepath, 'r', encoding='utf8') as fIn:
+    print('Loading passages entities...')
+    for line in fIn:
+        pid, entities = line.strip().split("\t")
+        passages_entities[int(pid)] = eval(entities)
+
+### Read the train queries entities, store in queries_entities dict
+queries_entities = {}
+queries_entities_filepath = os.path.join(data_folder, 'entities', 'queries_entities.tsv')
+with open(queries_entities_filepath, 'r', encoding='utf8') as fIn:
+    print('Loading queries entities...')
+    for line in fIn:
+        qid, entities = line.strip().split("\t")
+        queries_entities[int(qid)] = eval(entities)
+
 # Load a dict (qid, pid) -> ce_score that maps query-ids (qid) and paragraph-ids (pid)
 # to the CrossEncoder score computed by the cross-encoder/ms-marco-MiniLM-L-6-v2 model
 ce_scores_file = os.path.join(data_folder, 'cross-encoder-ms-marco-MiniLM-L-6-v2-scores.pkl.gz')
@@ -80,7 +96,7 @@ with gzip.open(hard_negatives_filepath, 'rt') as fIn:
     for line in tqdm.tqdm(fIn):
         if 0 < max_passages <= len(train_queries):
             break
-        data = json.loads(line)
+        data = eval(line) if LOCAL else json.loads(line)
 
         # Get the positive passage ids
         pos_pids = data['pos']
@@ -110,52 +126,19 @@ with gzip.open(hard_negatives_filepath, 'rt') as fIn:
 print("Train queries: {}".format(len(train_queries)))
 
 
-# We create a custom MSMARCO dataset that returns triplets (query, positive, negative)
-# on-the-fly based on the information from the mined-hard-negatives jsonl file.
-class MSMARCODataset(Dataset):
-    def __init__(self, queries, corpus, ce_scores):
-        self.queries = queries
-        self.queries_ids = list(queries.keys())
-        self.corpus = corpus
-        self.ce_scores = ce_scores
-
-        for qid in self.queries:
-            self.queries[qid]['pos'] = list(self.queries[qid]['pos'])
-            self.queries[qid]['neg'] = list(self.queries[qid]['neg'])
-            random.shuffle(self.queries[qid]['neg'])
-
-    def __getitem__(self, item):
-        query = self.queries[self.queries_ids[item]]
-        query_text = query['query']
-        qid = query['qid']
-
-        if len(query['pos']) > 0:
-            pos_id = query['pos'].pop(0)  # Pop positive and add at end
-            pos_text = self.corpus[pos_id]
-            query['pos'].append(pos_id)
-        else:  # We only have negatives, use two negs
-            pos_id = query['neg'].pop(0)  # Pop negative and add at end
-            pos_text = self.corpus[pos_id]
-            query['neg'].append(pos_id)
-
-        # Get a negative passage
-        neg_id = query['neg'].pop(0)  # Pop negative and add at end
-        neg_text = self.corpus[neg_id]
-        query['neg'].append(neg_id)
-
-        pos_score = self.ce_scores[qid][pos_id]
-        neg_score = self.ce_scores[qid][neg_id]
-
-        return InputExample(texts=[query_text, pos_text, neg_text], label=pos_score - neg_score)
-
-    def __len__(self):
-        return len(self.queries)
-
-
 # For training the SentenceTransformer model, we need a dataset, a dataloader, and a loss used for training.
-train_dataset = MSMARCODataset(queries=train_queries, corpus=corpus, ce_scores=ce_scores)
+train_dataset = MSMARCODataset(queries=train_queries, corpus=corpus, ce_scores=ce_scores, queries_entities=queries_entities, passages_entities=passages_entities)
 train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=train_batch_size, drop_last=True)
 train_loss = losses.MarginMSELoss(model=model)
+
+del corpus
+del queries
+del train_queries
+del train_dataset
+del queries_entities
+del passages_entities
+del ce_scores
+gc.collect()
 
 # Train the model
 model.fit(train_objectives=[(train_dataloader, train_loss)],
