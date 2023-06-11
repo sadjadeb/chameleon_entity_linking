@@ -12,7 +12,7 @@ run_output_path = model_save_path + '/Run.txt'
 device = 'cpu' if LOCAL else 'cuda:2'
 
 ####  Load model
-model = SentenceTransformer(model_save_path, device=device, mode='entity')
+model = SentenceTransformer(model_save_path, device=device, mode='text_entity')
 print(f'{model_save_path} model loaded.')
 
 ### Data files
@@ -80,14 +80,22 @@ for pid in tqdm(pids):
     passage_text = corpus[pid]
     passage_entity_spans = [(entity['start'], entity['end']) for entity in passages_entities[pid]]
     passage_entities = [entity.get('title', entity.get('spot')) for entity in passages_entities[pid]]
-    embedded_corpus[pid] = torch.tensor(model.encode(passage_text, passage_entity_spans, passage_entities)).unsqueeze(0)
+    embedded_corpus[pid] = {}
+    embedded_corpus[pid]['sentence'], embedded_corpus[pid]['entity'] = model.encode(passage_text, passage_entity_spans, passage_entities)
+    embedded_corpus[pid]['sentence'] = torch.tensor(embedded_corpus[pid]['sentence']).unsqueeze(0)
+    embedded_corpus[pid]['entity'] = torch.tensor(embedded_corpus[pid]['entity']).unsqueeze(0)
+    # embedded_corpus[pid] = torch.tensor(model.encode(passage_text, passage_entity_spans, passage_entities)).unsqueeze(0)
 
 embedded_queries = {}
 for qid in tqdm(queries):
     query_text = queries[qid]
     query_entity_spans = [(entity['start'], entity['end']) for entity in queries_entities[qid]]
     query_entities = [entity.get('title', entity.get('spot')) for entity in queries_entities[qid]]
-    embedded_queries[qid] = torch.tensor(model.encode(query_text, query_entity_spans, query_entities)).unsqueeze(0)
+    embedded_queries[qid] = {}
+    embedded_queries[qid]['sentence'], embedded_queries[qid]['entity'] = model.encode(query_text, query_entity_spans, query_entities)
+    embedded_queries[qid]['sentence'] = torch.tensor(embedded_queries[qid]['sentence']).unsqueeze(0)
+    embedded_queries[qid]['entity'] = torch.tensor(embedded_queries[qid]['entity']).unsqueeze(0)
+    # embedded_queries[qid] = torch.tensor(model.encode(query_text, query_entity_spans, query_entities)).unsqueeze(0)
 
 del corpus
 del queries
@@ -98,9 +106,15 @@ gc.collect()
 # Search in a loop for the individual queries
 ranks = {}
 for qid, passages in tqdm(qrels.items()):
-    query_embedding = embedded_queries[qid]
+    query_sentence_embedding = embedded_queries[qid]['sentence']
+    query_entity_embedding = embedded_queries[qid]['entity']
 
-    scores = [float(torch.cosine_similarity(query_embedding, embedded_corpus[pid])) for pid in passages]
+    if model.mode == 'text':
+        scores = [float(torch.cosine_similarity(query_sentence_embedding, embedded_corpus[pid]['sentence'])) for pid in passages]
+    elif model.mode == 'entity':
+        scores = [float(torch.cosine_similarity(query_entity_embedding, embedded_corpus[pid]['entity'])) for pid in passages]
+    elif model.mode == 'text_entity':
+        scores = [(0.9 * float(torch.cosine_similarity(query_sentence_embedding, embedded_corpus[pid]['sentence']))) + (0.1 * float(torch.cosine_similarity(query_entity_embedding, embedded_corpus[pid]['entity']))) for pid in passages]
 
     # Sort the scores in decreasing order
     results = [{'pid': pid, 'score': score} for pid, score in zip(passages, scores)]

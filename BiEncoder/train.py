@@ -1,8 +1,8 @@
 import sys
 import json
 from torch.utils.data import DataLoader
-from sentence_transformers import models, losses
-from model import SentenceTransformer, MSMARCODataset
+from sentence_transformers import models
+from model import SentenceTransformer, MSMARCODataset, MarginMSELossOnTextAndEntity
 import gzip
 import os
 import tqdm
@@ -35,8 +35,9 @@ if use_pre_trained_model:
 else:
     print("Create new SBERT model")
     word_embedding_model = models.Transformer(model_name, max_seq_length=max_seq_length)
+    entity_embedding_model = models.Transformer(model_name, max_seq_length=max_seq_length)
     pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), "mean")
-    model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device, mode='entity')
+    model = SentenceTransformer(modules=[word_embedding_model, entity_embedding_model, pooling_model], device=device, mode='text')
 
 ### Now we read the MS Marco dataset
 if LOCAL:
@@ -129,7 +130,7 @@ print("Train queries: {}".format(len(train_queries)))
 # For training the SentenceTransformer model, we need a dataset, a dataloader, and a loss used for training.
 train_dataset = MSMARCODataset(queries=train_queries, corpus=corpus, ce_scores=ce_scores, queries_entities=queries_entities, passages_entities=passages_entities)
 train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=train_batch_size, drop_last=True)
-train_loss = losses.MarginMSELoss(model=model)
+train_loss = MarginMSELossOnTextAndEntity(model=model)
 
 del corpus
 del queries
