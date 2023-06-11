@@ -24,7 +24,7 @@ model_save_path = f'output/fully-cross-encoder_{model_name.split("/")[-1]}_with-
 os.makedirs(model_save_path, exist_ok=True)
 
 # We set num_labels=1, which predicts a continuous score between 0 and 1
-model = FullyCrossEncoder(model_name, max_length=512, device=device)
+model = FullyCrossEncoder(model_name, max_length=512, device=device, mode='text_entity')
 model.to(model.target_device)
 
 ### Now we read the MS Marco dataset

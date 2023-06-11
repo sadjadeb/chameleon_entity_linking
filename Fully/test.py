@@ -13,7 +13,7 @@ run_output_path = model_save_path + '/Run.txt'
 device = 'cpu' if LOCAL else 'cuda:2'
 device = torch.device(device)
 
-model = FullyCrossEncoder(model_name)
+model = FullyCrossEncoder(model_name, mode='text_entity')
 model.load_state_dict(torch.load(model_save_path + '/FullyCrossEncoder.pt'))
 model.target_device = device
 model.eval()
@@ -106,8 +106,8 @@ for qid, passages in tqdm(qrels.items()):
     pred_scores = []
     with torch.no_grad():
         for batch in inp_dataloader:
-            query, passage = batch
-            score = model(query, passage)
+            query, passage, query_entities, passage_entities = batch
+            score = model(query, passage, query_entities, passage_entities)
             score = list(map(lambda x: float(x), score))
             pred_scores.extend(score)
 
