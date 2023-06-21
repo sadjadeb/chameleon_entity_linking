@@ -4,6 +4,7 @@ import os
 import torch
 import sys
 from tqdm import tqdm, trange
+import time
 
 LOCAL = True if sys.platform == 'win32' else False
 model_name = "studio-ousia/luke-base"
@@ -40,14 +41,14 @@ if os.path.exists(os.path.join(model_save_path, 'faiss.index')):
     index = faiss.read_index(os.path.join(model_save_path, 'faiss.index'))
     print(f'Index loaded. Index size: {index.ntotal}')
 else:
-    for x in trange(1, desc='Encoding corpus'):
+    for x in trange(9, desc='Encoding corpus'):
         corpus_embeddings = model.encode(corpus[x * 1000000:(x + 1) * 1000000], convert_to_tensor=True, show_progress_bar=True, batch_size=128)
         torch.save(corpus_embeddings, os.path.join(model_save_path, f'corpus_tensor_{x + 1}.pt'))
 
     index = faiss.IndexFlatL2(768)
     print(index.is_trained)
 
-    for i in trange(1, 2, desc='Creating index'):
+    for i in trange(1, 10, desc='Creating index'):
         all_corpus = torch.load(os.path.join(model_save_path, f'corpus_tensor_{i}.pt'), map_location=torch.device(device)).detach().cpu().numpy()
         index.add(all_corpus)
 
@@ -66,11 +67,14 @@ with open(queries_filepath, 'r', encoding='utf-8') as fIn:
         queries.append(query.strip())
 
 k = 1000
-queries_embeddings = model.encode(queries)
-D, I = index.search(queries_embeddings, k)
+xq = model.encode(queries)
+start_time = time.time()
+D, I = index.search(xq, k)
+print(f'Search time: {time.time() - start_time}')
 
+print('Writing the result to file...')
 with open(run_output_path, 'w', encoding='utf-8') as fOut:
-    for qid in trange(len(I), desc='Writing run file'):
+    for qid in range(len(I)):
         for rank in range(10):
             # fOut.write(qids[qid] + '\t' + str(I[qid][rank - 1]) + '\t' + str(rank) + '\n')
             fOut.write(f'{qids[qid]} Q0 {pids[I[qid][rank - 1]]} {1/(rank+1):.7f} {rank+1} BiEncoder_Retrieval\n')
