@@ -16,6 +16,7 @@ device = 'cpu' if LOCAL else 'cuda:2'
 
 # We use the Bi-Encoder to encode all passages, so that we can use it with sematic search
 model = SentenceTransformer(model_save_path, device=device)
+embedding_dim = model.get_sentence_embedding_dimension()
 model.max_seq_length = 512  # Truncate long passages to 512 tokens
 print(f'{model_save_path} model loaded.')
 
@@ -47,7 +48,7 @@ else:
         corpus_embeddings = model.encode(corpus[x * 1000000:(x + 1) * 1000000], convert_to_tensor=True, show_progress_bar=True, batch_size=128)
         torch.save(corpus_embeddings, os.path.join(model_save_path, f'corpus_tensor_{x + 1}.pt'))
 
-    index = faiss.IndexFlatL2(768)
+    index = faiss.IndexFlatL2(embedding_dim)
     print(index.is_trained)
 
     for i in trange(1, 10, desc='Creating index'):
@@ -79,7 +80,7 @@ with open(run_output_path, 'w', encoding='utf-8') as fOut:
     for qid in range(len(I)):
         for rank in range(10):
             # fOut.write(qids[qid] + '\t' + str(I[qid][rank - 1]) + '\t' + str(rank) + '\n')
-            fOut.write(f'{qids[qid]} Q0 {I[qid][rank - 1]} {rank+1} {1/(rank+1):.7f} BiEncoder_Retrieval\n')
+            fOut.write(f'{qids[qid]} Q0 {pids[I[qid][rank]]} {rank+1} {1/(rank+1):.7f} BiEncoder_Retrieval\n')
 
 print('Evaluation...')
 qrels = ir_datasets.load('msmarco-passage/dev/small').qrels_iter()
