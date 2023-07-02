@@ -4,6 +4,9 @@ from tqdm import tqdm
 import os
 import sys
 import gc
+import ir_datasets, ir_measures
+from ir_measures import *
+
 
 LOCAL = True if sys.platform == 'win32' else False
 model_name = "studio-ousia/luke-base"
@@ -127,3 +130,8 @@ with open(run_output_path, 'w', encoding='utf-8') as out:
     for qid, results in ranks.items():
         for rank, hit in enumerate(results):
             out.write(f'{qid} Q0 {hit["pid"]} {rank + 1} {hit["score"]} BiEncoder\n')
+
+print('Evaluation...')
+qrels = ir_datasets.load('msmarco-passage/dev/small').qrels_iter()
+run = ir_measures.read_trec_run(run_output_path)
+print(ir_measures.calc_aggregate([nDCG@10, P@10, AP@10, RR@10, R@10], qrels, run))
