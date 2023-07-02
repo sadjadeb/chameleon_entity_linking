@@ -66,15 +66,15 @@ with open(queries_filepath, 'r', encoding='utf-8') as fIn:
         qids.append(qid)
         queries.append(query.strip())
 
-k = 1000
+top_k = 1000
 xq = model.encode(queries)
 start_time = time.time()
-D, I = index.search(xq, k)
-print(f'Search time: {time.time() - start_time}')
+D, I = index.search(xq, top_k)
+print(f'Search time: {time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time))}')
 
 print('Writing the result to file...')
 with open(run_output_path, 'w', encoding='utf-8') as fOut:
     for qid in range(len(I)):
         for rank in range(10):
             # fOut.write(qids[qid] + '\t' + str(I[qid][rank - 1]) + '\t' + str(rank) + '\n')
-            fOut.write(f'{qids[qid]} Q0 {pids[I[qid][rank - 1]]} {1/(rank+1):.7f} {rank+1} BiEncoder_Retrieval\n')
+            fOut.write(f'{qids[qid]} Q0 {I[qid][rank - 1]} {rank+1} {1/(rank+1):.7f} BiEncoder_Retrieval\n')
