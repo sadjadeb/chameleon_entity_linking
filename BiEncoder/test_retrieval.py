@@ -79,7 +79,6 @@ print('Writing the result to file...')
 with open(run_output_path, 'w', encoding='utf-8') as fOut:
     for qid in range(len(I)):
         for rank in range(10):
-            # fOut.write(qids[qid] + '\t' + str(I[qid][rank - 1]) + '\t' + str(rank) + '\n')
             fOut.write(f'{qids[qid]} Q0 {pids[I[qid][rank]]} {rank+1} {1/(rank+1):.7f} BiEncoder_Retrieval\n')
 
 print('Evaluation...')
