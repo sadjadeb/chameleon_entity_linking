@@ -1,9 +1,0 @@
-{
-  "learning_rate": 2e-5,
-  "dataPath" : "/home/sajadeb/KnowledgeAwareTextMatching_TEXT/dataset",
-  "output" : "/home/sajadeb/KnowledgeAwareTextMatching_TEXT/output/",
-  "Model" : "studio-ousia/luke-base",
-  "batch" : 5,
-  "epochs" : 1,
-  "num_warmup_steps" :0
-}

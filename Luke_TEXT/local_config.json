@@ -1,9 +1,0 @@
-{
-  "learning_rate": 2e-5,
-  "dataPath" : "C:\\Users\\sajad\\PycharmProjects\\chameleon_entity_linking\\dataset2",
-  "output" : "C:\\Users\\sajad\\PycharmProjects\\chameleon_entity_linking\\output\\",
-  "Model" : "studio-ousia/luke-base",
-  "batch" : 10,
-  "epochs" : 1,
-  "num_warmup_steps" :0
-}
